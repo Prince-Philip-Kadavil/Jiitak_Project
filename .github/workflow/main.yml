@@ -30,12 +30,12 @@ jobs:
   # Deploy the Docker image to EC2
   deploy-to-ec2:
     # Run the job on an Ubuntu runner
-    runs-on: ubuntu-latest
+    runs-on: amazon-linux-2
     # Define the steps for the job
     steps:
       # Install the AWS CLI
       - name: Install the AWS CLI
-        run: sudo apt-get install awscli
+        run: sudo yum install awscli -y
       
       # Configure the AWS CLI with the AWS credentials
       - name: Configure the AWS CLI
