@@ -1,0 +1,54 @@
+name: Deploy Flask App to EC2
+
+# Trigger the workflow on push events to the main branch
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v2
+      
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      # Build and tag the Docker image
+      - name: Build and tag the Docker image
+        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/flask-app:latest .
+      
+      # Push the Docker image to Docker Hub
+      - name: Push the Docker image to Docker Hub
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/flask-app:latest
+  
+  # Deploy the Docker image to EC2
+  deploy-to-ec2:
+    # Run the job on an Ubuntu runner
+    runs-on: ubuntu-latest
+    # Define the steps for the job
+    steps:
+      # Install the AWS CLI
+      - name: Install the AWS CLI
+        run: sudo apt-get install awscli
+      
+      # Configure the AWS CLI with the AWS credentials
+      - name: Configure the AWS CLI
+        run: |
+          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws configure set default.region ${{ secrets.AWS_REGION }}
+      
+      # Connect to the EC2 instance using SSH and run the Docker commands
+      - name: Connect to the EC2 instance and run the Docker commands
+        run: |
+          ssh -o StrictHostKeyChecking=no -i ${{ secrets.EC2_KEY_FILE }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
+          docker pull ${{ secrets.DOCKER_USERNAME }}/flask-app:latest
+          docker stop $(docker ps -q)
+          docker run -d -p 5000:5000 ${{ secrets.DOCKER_USERNAME }}/flask-app:latest
+          EOF
